@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Word Counter</title>
+</head>
+<body>
+    <h1>Программа для подсчета уникальных слов</h1>
+
+    <h2>Загрузить файл</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" name="load">Загрузить</button>
+    </form>
+
+    <h2>Введите слово для подсчета</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ word_count_form.as_p }}
+        <button type="submit" name="wordcount">Посчитать</button>
+    </form>
+
+    {% if word_count_result is not None %}
+        <p>Слово "{{ word_count_form.cleaned_data.word }}" встречается {{ word_count_result }} раз(а).</p>
+    {% endif %}
+
+    <h2>Очистить память</h2>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="clear">Очистить</button>
+    </form>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+    {% if words %}
+        <h2>Загруженные слова:</h2>
+        <ul>
+            {% for word in words %}
+                <li>{{ word }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
