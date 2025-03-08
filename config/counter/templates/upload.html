@@ -15,10 +15,6 @@
         <button type="submit">Загрузить</button>
     </form>
 
-    {% if words_in_file %}
-        <h3>Файл загружен. Количество слов в файле: {{ words_in_file|length }}</h3>
-    {% endif %}
-
     <h2>Подсчёт определённого слова</h2>
     <form method="POST" action="{% url 'word_count' %}">
         {% csrf_token %}
