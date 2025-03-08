@@ -1,37 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Word Counter</title>
+    <title>Подсчёт слов</title>
 </head>
 <body>
-    <h1>Загрузите файл для подсчета слов</h1>
-
-    <form method="POST" enctype="multipart/form-data">
+    <h2>Загрузите текстовый файл</h2>
+    <form action="{% url 'load_file' %}" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <label for="file">Загрузите файл:</label>
-        <input type="file" name="file" id="file">
+        <input type="file" name="file" required>
         <button type="submit">Загрузить</button>
     </form>
 
-    <h2>Подсчёт определённого слова</h2>
-    <form method="POST" action="{% url 'word_count' %}">
-        {% csrf_token %}
-        <label for="word">Введите слово для подсчета:</label>
-        <input type="text" name="word" id="word" required>
-        <button type="submit">Подсчитать</button>
-    </form>
+    {% if file_uploaded %}
+        <h3>Файл загружен!</h3>
 
-    {% if word_to_count %}
-        <h3>Слово "{{ word_to_count }}" встречается {{ count }} раз(а) в загруженном файле.</h3>
+        <h2>Введите слово для поиска</h2>
+        <form action="{% url 'word_count' %}" method="post">
+            {% csrf_token %}
+            <input type="text" name="word" required>
+            <button type="submit">Посчитать</button>
+        </form>
     {% endif %}
 
-    <h2>Очистить память</h2>
-    <form method="POST" action="{% url 'clear_memory' %}">
-        {% csrf_token %}
-        <button type="submit">Очистить данные</button>
-    </form>
+    {% if word_to_count is not None %}
+        <h3>Слово "{{ word_to_count }}" встречается {{ count }} раз(а).</h3>
+    {% endif %}
 
+    <form action="{% url 'clear_memory' %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Очистить</button>
+    </form>
 </body>
 </html>
