@@ -1,36 +1,55 @@
-import re
-
 from django.shortcuts import render
-from .models import Word
+from django.http import HttpResponse
+from django.core.files.storage import FileSystemStorage
+import re
 
 
 def load_file(request):
-    word_count = None
-
-    if request.method == 'POST' and request.FILES['file']:
+    if request.method == 'POST' and request.FILES.get('file'):
         uploaded_file = request.FILES['file']
+        file_name = uploaded_file.name
 
-        try:
-            file_content = uploaded_file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            uploaded_file.seek(0)
-            file_content = uploaded_file.read().decode('windows-1251', errors='ignore')
+        fs = FileSystemStorage()
+        fs.save(file_name, uploaded_file)
 
-        words = re.findall(r'\b[a-zA-Z]+\b', file_content.lower())
+        file_path = fs.path(file_name)
 
-        for word in words:
-            obj, created = Word.objects.get_or_create(word=word)
-            if not created:
-                obj.count += 1
-                obj.save()
+        encodings = ['utf-8', 'windows-1251', 'latin-1', 'utf-16', 'ISO-8859-1']
+        file_content = None
 
-        word_count = len(words)
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as file:
+                    file_content = file.read()
+                break
+            except (UnicodeDecodeError, FileNotFoundError) as e:
+                continue
 
-        return render(request, 'upload.html', {'word_count': word_count})
+        if file_content is None:
+            return HttpResponse("Ошибка при чтении файла. Пожалуйста, убедитесь, что файл в правильной кодировке.",
+                                status=400)
 
-    return render(request, 'upload.html', {'word_count': word_count})
+        words_in_file = re.findall(r'\b[a-zA-Zа-яА-ЯёЁ]+\b', file_content.lower())
+
+        return render(request, 'upload.html', {'words_in_file': words_in_file})
+
+    return render(request, 'upload.html')
+
+
+def word_count(request):
+    count = 0
+    word_to_count = None
+    if request.method == 'POST':
+        word_to_count = request.POST.get('word')
+        if word_to_count:
+            word_to_count = word_to_count.lower()
+            if 'words_in_file' in request.session:
+                count = request.session['words_in_file'].count(word_to_count)
+
+    return render(request, 'upload.html', {'word_to_count': word_to_count, 'count': count})
 
 
 def clear_memory(request):
-    Word.objects.all().delete()
-    return render(request, 'upload.html', {'unique_word_count': 0})
+    if 'words_in_file' in request.session:
+        del request.session['words_in_file']
+    return render(request, 'upload.html', {'word_to_count': None, 'count': 0})

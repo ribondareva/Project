@@ -2,24 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Загрузить файл</title>
+    <title>File Word Counter</title>
 </head>
 <body>
+    <h1>Загрузите файл для подсчета слов</h1>
 
-<h2>Загрузите файл для подсчета уникальных слов:</h2>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="file">Загрузите файл:</label>
+        <input type="file" name="file" id="file">
+        <button type="submit">Загрузить</button>
+    </form>
 
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
-    <label for="file">Выберите файл:</label>
-    <input type="file" name="file" id="file" required>
-    <button type="submit">Загрузить файл</button>
-</form>
+    {% if words_in_file %}
+        <h3>Файл загружен. Количество слов в файле: {{ words_in_file|length }}</h3>
+    {% endif %}
 
-{% if word_count is not None %}
-    <h3>Количество уникальных слов: {{ word_count }}</h3>
-{% endif %}
+    <h2>Подсчёт определённого слова</h2>
+    <form method="POST" action="{% url 'word_count' %}">
+        {% csrf_token %}
+        <label for="word">Введите слово для подсчета:</label>
+        <input type="text" name="word" id="word" required>
+        <button type="submit">Подсчитать</button>
+    </form>
+
+    {% if word_to_count %}
+        <h3>Слово "{{ word_to_count }}" встречается {{ count }} раз(а) в загруженном файле.</h3>
+    {% endif %}
+
+    <h2>Очистить память</h2>
+    <form method="POST" action="{% url 'clear_memory' %}">
+        {% csrf_token %}
+        <button type="submit">Очистить данные</button>
+    </form>
 
 </body>
 </html>
