@@ -1,54 +1,43 @@
+import os
 import re
+
 from django.shortcuts import render
-from .forms import FileUploadForm, WordCountForm
-
-# Для хранения данных о словах используем глобальную переменную
-words = []
-
-
-# Загрузка файла
-def load_file(file):
-    global words
-    text = file.read().decode('utf-8')
-    # Находим все буквенные слова и приводим их к нижнему регистру
-    words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+from django.http import HttpResponse
+from .models import Word
+from django.core.files.storage import FileSystemStorage
 
 
-# Подсчет слов
-def word_count(word):
-    global words
-    return words.count(word.lower())
+def load_file(request):
+    word_count = None  # Переменная для хранения подсчета слов, если нужно отобразить результат
+
+    if request.method == 'POST' and request.FILES['file']:
+        uploaded_file = request.FILES['file']
+
+        # Попробуем декодировать файл с несколькими кодировками
+        try:
+            file_content = uploaded_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            uploaded_file.seek(0)  # Сбрасываем указатель на начало файла
+            file_content = uploaded_file.read().decode('windows-1251', errors='ignore')  # Попробуем с другой кодировкой
+
+        # Разбиваем текст на слова и фильтруем только буквенные
+        words = re.findall(r'\b[a-zA-Z]+\b', file_content.lower())
+
+        # Добавление или обновление слов в базе данных
+        for word in words:
+            obj, created = Word.objects.get_or_create(word=word)
+            if not created:
+                obj.count += 1
+                obj.save()
+
+        # Подсчитываем количество уникальных слов
+        word_count = len(words)
+
+        return render(request, 'upload.html', {'word_count': word_count})
+
+    return render(request, 'upload.html', {'word_count': word_count})  # Отображаем страницу с результатами
 
 
-# Главная страница с формами
-def index(request):
-    global words
-    word_count_result = None
-    if request.method == 'POST':
-        if 'load' in request.POST:
-            form = FileUploadForm(request.POST, request.FILES)
-            if form.is_valid():
-                file = request.FILES['file']
-                load_file(file)
-                return render(request, 'counter/index.html',
-                              {'form': form, 'word_count_form': WordCountForm(), 'message': 'Файл загружен',
-                               'words': words})
-
-        elif 'wordcount' in request.POST:
-            form = WordCountForm(request.POST)
-            if form.is_valid():
-                word = form.cleaned_data['word']
-                word_count_result = word_count(word)
-                return render(request, 'counter/index.html', {'form': FileUploadForm(), 'word_count_form': form,
-                                                              'word_count_result': word_count_result, 'words': words})
-
-        elif 'clear' in request.POST:
-            words = []
-            return render(request, 'counter/index.html',
-                          {'form': FileUploadForm(), 'word_count_form': WordCountForm(), 'message': 'Память очищена',
-                           'words': words})
-    else:
-        form = FileUploadForm()
-        word_count_form = WordCountForm()
-
-    return render(request, 'counter/index.html', {'form': form, 'word_count_form': word_count_form, 'words': words})
+def clear_memory(request):
+    Word.objects.all().delete()  # Удаляем все записи в таблице Word
+    return render(request, 'upload.html', {'unique_word_count': 0})
